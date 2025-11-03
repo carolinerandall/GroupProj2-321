@@ -1,0 +1,32 @@
+## .NET build artifacts
+bin/
+obj/
+*.dll
+*.pdb
+*.exe
+*.cache
+
+## Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Logs
+*.log
+
+## Test results
+TestResults/
+
+## NuGet
+*.nupkg
+packages/
+
+## SQL scripts (optional - remove if you want to track these)
+*.sql
+!create_tables.sql
+

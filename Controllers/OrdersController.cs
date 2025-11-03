@@ -43,8 +43,8 @@ namespace GroupProj2_321.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating order");
-                return StatusCode(500, new { message = "An error occurred while creating the order." });
+                _logger.LogError(ex, "Error creating order. Error: {Message}", ex.Message);
+                return StatusCode(500, new { message = $"An error occurred while creating the order: {ex.Message}" });
             }
         }
 
@@ -84,8 +84,8 @@ namespace GroupProj2_321.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving orders for school ID: {SchoolId}", schoolId);
-                return StatusCode(500, "An error occurred while retrieving orders.");
+                _logger.LogError(ex, "Error retrieving orders for school ID: {SchoolId}. Error: {Message}", schoolId, ex.Message);
+                return StatusCode(500, $"An error occurred while retrieving orders: {ex.Message}");
             }
         }
 
@@ -102,8 +102,8 @@ namespace GroupProj2_321.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving orders for farmer ID: {FarmerId}", farmerId);
-                return StatusCode(500, "An error occurred while retrieving orders.");
+                _logger.LogError(ex, "Error retrieving orders for farmer ID: {FarmerId}. Error: {Message}", farmerId, ex.Message);
+                return StatusCode(500, $"An error occurred while retrieving orders: {ex.Message}");
             }
         }
 

@@ -88,8 +88,8 @@ namespace GroupProj2_321.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting available produce");
-                return StatusCode(500, "An error occurred while retrieving available produce.");
+                _logger.LogError(ex, "Error getting available produce. Error: {Message}", ex.Message);
+                return StatusCode(500, $"An error occurred while retrieving available produce: {ex.Message}");
             }
         }
 
@@ -106,8 +106,8 @@ namespace GroupProj2_321.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting orders for school ID: {SchoolId}", schoolId);
-                return StatusCode(500, "An error occurred while retrieving orders.");
+                _logger.LogError(ex, "Error getting orders for school ID: {SchoolId}. Error: {Message}", schoolId, ex.Message);
+                return StatusCode(500, $"An error occurred while retrieving orders: {ex.Message}");
             }
         }
     }

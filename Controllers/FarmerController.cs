@@ -125,8 +125,8 @@ namespace GroupProj2_321.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding produce for farmer ID: {FarmerId}", farmerId);
-                return StatusCode(500, "An error occurred while adding produce.");
+                _logger.LogError(ex, "Error adding produce for farmer ID: {FarmerId}. Error: {Message}", farmerId, ex.Message);
+                return StatusCode(500, $"An error occurred while adding produce: {ex.Message}");
             }
         }
 
@@ -178,8 +178,8 @@ namespace GroupProj2_321.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting orders for farmer ID: {FarmerId}", farmerId);
-                return StatusCode(500, "An error occurred while retrieving orders.");
+                _logger.LogError(ex, "Error getting orders for farmer ID: {FarmerId}. Error: {Message}", farmerId, ex.Message);
+                return StatusCode(500, $"An error occurred while retrieving orders: {ex.Message}");
             }
         }
     }

@@ -37,10 +37,13 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 
-// Enable static file serving
+app.UseRouting();
+app.MapControllers();
+
+// Enable static file serving for wwwroot
 app.UseStaticFiles();
 
-// Serve index.html from Client folder for SPA routing
+// Serve index.html from Client folder for SPA routing (after API routes)
 app.UseDefaultFiles(new DefaultFilesOptions
 {
     FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
@@ -48,15 +51,12 @@ app.UseDefaultFiles(new DefaultFilesOptions
     RequestPath = ""
 });
 
-// Serve static files from Client folder
+// Serve static files from Client folder (after API routes)
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
         Path.Combine(Directory.GetCurrentDirectory(), "Client")),
     RequestPath = ""
 });
-
-app.UseRouting();
-app.MapControllers();
 
 app.Run();

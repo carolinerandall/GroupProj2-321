@@ -674,16 +674,16 @@ namespace GroupProj2_321.Services
                 // Create order items
                 foreach (var item in orderItems)
                 {
+                    // subtotal is a generated column (quantity * unit_price), so don't insert it
                     var itemQuery = @"
-                        INSERT INTO order_items (order_id, produce_id, quantity, unit_price, subtotal)
-                        VALUES (@orderId, @produceId, @quantity, @unitPrice, @subtotal)";
+                        INSERT INTO order_items (order_id, produce_id, quantity, unit_price)
+                        VALUES (@orderId, @produceId, @quantity, @unitPrice)";
 
                     using var itemCommand = new MySqlCommand(itemQuery, connection, transaction);
                     itemCommand.Parameters.AddWithValue("@orderId", orderId);
                     itemCommand.Parameters.AddWithValue("@produceId", item.ProduceId);
                     itemCommand.Parameters.AddWithValue("@quantity", item.Quantity);
                     itemCommand.Parameters.AddWithValue("@unitPrice", item.UnitPrice);
-                    itemCommand.Parameters.AddWithValue("@subtotal", item.Quantity * item.UnitPrice);
 
                     await itemCommand.ExecuteNonQueryAsync();
 

@@ -262,11 +262,15 @@ namespace GroupProj2_321.Services
             await connection.OpenAsync();
 
             var query = @"
-                SELECT order_id, school_id, farmer_id, order_date, delivery_date, status, 
-                       total_cost, payment_status, created_at
-                FROM orders
-                WHERE farmer_id = @farmerId
-                ORDER BY order_date DESC";
+                SELECT o.order_id, o.school_id, o.farmer_id, o.order_date, o.delivery_date, o.status, 
+                       o.total_cost, o.payment_status, o.created_at, o.delivery_fee,
+                       f.email as farmer_email, f.farm_name, f.first_name as farmer_first_name, f.last_name as farmer_last_name,
+                       s.email as school_email, s.school_name, s.contact_name
+                FROM orders o
+                JOIN farmers f ON o.farmer_id = f.farmer_id
+                JOIN schools s ON o.school_id = s.school_id
+                WHERE o.farmer_id = @farmerId
+                ORDER BY o.order_date DESC";
 
             using var command = new MySqlCommand(query, connection);
             command.Parameters.AddWithValue("@farmerId", farmerId);
@@ -275,7 +279,7 @@ namespace GroupProj2_321.Services
             using var reader = await command.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
-                orders.Add(new Order
+                var order = new Order
                 {
                     OrderId = reader.GetInt32("order_id"),
                     SchoolId = reader.GetInt32("school_id"),
@@ -285,8 +289,17 @@ namespace GroupProj2_321.Services
                     Status = reader.GetString("status"),
                     TotalCost = reader.GetDecimal("total_cost"),
                     PaymentStatus = reader.GetString("payment_status"),
-                    CreatedAt = reader.GetDateTime("created_at")
-                });
+                    CreatedAt = reader.GetDateTime("created_at"),
+                    DeliveryFee = reader.IsDBNull(reader.GetOrdinal("delivery_fee")) ? 0 : reader.GetDecimal("delivery_fee"),
+                    FarmerEmail = reader.GetString("farmer_email"),
+                    FarmerName = reader.IsDBNull(reader.GetOrdinal("farm_name")) 
+                        ? $"{reader.GetString("farmer_first_name")} {reader.GetString("farmer_last_name")}"
+                        : reader.GetString("farm_name"),
+                    SchoolEmail = reader.GetString("school_email"),
+                    SchoolName = reader.GetString("school_name"),
+                    SchoolContactName = reader.IsDBNull(reader.GetOrdinal("contact_name")) ? null : reader.GetString("contact_name")
+                };
+                orders.Add(order);
             }
 
             return orders;
@@ -533,11 +546,15 @@ namespace GroupProj2_321.Services
             await connection.OpenAsync();
 
             var query = @"
-                SELECT order_id, school_id, farmer_id, order_date, delivery_date, status, 
-                       total_cost, payment_status, created_at
-                FROM orders
-                WHERE school_id = @schoolId
-                ORDER BY order_date DESC";
+                SELECT o.order_id, o.school_id, o.farmer_id, o.order_date, o.delivery_date, o.status, 
+                       o.total_cost, o.payment_status, o.created_at, o.delivery_fee,
+                       f.email as farmer_email, f.farm_name, f.first_name as farmer_first_name, f.last_name as farmer_last_name,
+                       s.email as school_email, s.school_name
+                FROM orders o
+                JOIN farmers f ON o.farmer_id = f.farmer_id
+                JOIN schools s ON o.school_id = s.school_id
+                WHERE o.school_id = @schoolId
+                ORDER BY o.order_date DESC";
 
             using var command = new MySqlCommand(query, connection);
             command.Parameters.AddWithValue("@schoolId", schoolId);
@@ -546,7 +563,7 @@ namespace GroupProj2_321.Services
             using var reader = await command.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
-                orders.Add(new Order
+                var order = new Order
                 {
                     OrderId = reader.GetInt32("order_id"),
                     SchoolId = reader.GetInt32("school_id"),
@@ -556,8 +573,16 @@ namespace GroupProj2_321.Services
                     Status = reader.GetString("status"),
                     TotalCost = reader.GetDecimal("total_cost"),
                     PaymentStatus = reader.GetString("payment_status"),
-                    CreatedAt = reader.GetDateTime("created_at")
-                });
+                    CreatedAt = reader.GetDateTime("created_at"),
+                    DeliveryFee = reader.IsDBNull(reader.GetOrdinal("delivery_fee")) ? 0 : reader.GetDecimal("delivery_fee"),
+                    FarmerEmail = reader.GetString("farmer_email"),
+                    FarmerName = reader.IsDBNull(reader.GetOrdinal("farm_name")) 
+                        ? $"{reader.GetString("farmer_first_name")} {reader.GetString("farmer_last_name")}"
+                        : reader.GetString("farm_name"),
+                    SchoolEmail = reader.GetString("school_email"),
+                    SchoolName = reader.GetString("school_name")
+                };
+                orders.Add(order);
             }
 
             return orders;
@@ -779,6 +804,45 @@ namespace GroupProj2_321.Services
             command.Parameters.AddWithValue("@paymentStatus", paymentStatus);
 
             await command.ExecuteNonQueryAsync();
+        }
+
+        /// <summary>
+        /// Updates order payment information and delivery fee
+        /// </summary>
+        public async Task UpdateOrderPaymentAndDeliveryAsync(int orderId, string paymentStatus, decimal deliveryFee, string? creditCardLast4 = null)
+        {
+            using var connection = new MySqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            var query = @"
+                UPDATE orders 
+                SET payment_status = @paymentStatus, 
+                    delivery_fee = @deliveryFee,
+                    status = CASE 
+                        WHEN @paymentStatus = 'Paid' THEN 'Payment Complete - Waiting on Farmer'
+                        ELSE status
+                    END
+                WHERE order_id = @orderId";
+
+            using var command = new MySqlCommand(query, connection);
+            command.Parameters.AddWithValue("@paymentStatus", paymentStatus);
+            command.Parameters.AddWithValue("@deliveryFee", deliveryFee);
+            command.Parameters.AddWithValue("@orderId", orderId);
+            await command.ExecuteNonQueryAsync();
+
+            // Also update school's credit card info if provided
+            if (!string.IsNullOrEmpty(creditCardLast4))
+            {
+                var updateSchoolQuery = @"
+                    UPDATE schools 
+                    SET credit_card_last4 = @creditCardLast4
+                    WHERE school_id = (SELECT school_id FROM orders WHERE order_id = @orderId)";
+
+                using var updateCommand = new MySqlCommand(updateSchoolQuery, connection);
+                updateCommand.Parameters.AddWithValue("@creditCardLast4", creditCardLast4);
+                updateCommand.Parameters.AddWithValue("@orderId", orderId);
+                await updateCommand.ExecuteNonQueryAsync();
+            }
         }
 
         // ==================== PAYMENT METHODS ====================

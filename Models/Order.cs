@@ -11,6 +11,14 @@ namespace GroupProj2_321.Models
         public decimal TotalCost { get; set; }
         public string PaymentStatus { get; set; } = "Unpaid"; // Unpaid, Paid, Refunded, Partial
         public DateTime CreatedAt { get; set; }
+        public decimal DeliveryFee { get; set; } = 0;
+        
+        // Display properties for email contacts (not stored in DB, populated from joins)
+        public string? FarmerEmail { get; set; }
+        public string? FarmerName { get; set; }
+        public string? SchoolEmail { get; set; }
+        public string? SchoolName { get; set; }
+        public string? SchoolContactName { get; set; }
         
         // Navigation properties
         public School? School { get; set; }

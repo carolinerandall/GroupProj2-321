@@ -6,6 +6,7 @@ namespace GroupProj2_321.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Produces("application/json")]
     public class OrdersController : ControllerBase
     {
         private readonly DatabaseService _databaseService;
@@ -51,7 +52,7 @@ namespace GroupProj2_321.Controllers
         /// <summary>
         /// Gets order details by order ID
         /// </summary>
-        [HttpGet("{orderId}")]
+        [HttpGet("{orderId:int}")]
         public async Task<IActionResult> GetOrder(int orderId)
         {
             try
@@ -74,7 +75,7 @@ namespace GroupProj2_321.Controllers
         /// <summary>
         /// Gets school's orders
         /// </summary>
-        [HttpGet("school/{schoolId}")]
+        [HttpGet("school/{schoolId:int}")]
         public async Task<IActionResult> GetSchoolOrders(int schoolId)
         {
             try
@@ -92,7 +93,7 @@ namespace GroupProj2_321.Controllers
         /// <summary>
         /// Gets farmer's orders
         /// </summary>
-        [HttpGet("farmer/{farmerId}")]
+        [HttpGet("farmer/{farmerId:int}")]
         public async Task<IActionResult> GetFarmerOrders(int farmerId)
         {
             try
@@ -110,7 +111,7 @@ namespace GroupProj2_321.Controllers
         /// <summary>
         /// Updates order status
         /// </summary>
-        [HttpPut("{orderId}/status")]
+        [HttpPut("{orderId:int}/status")]
         public async Task<IActionResult> UpdateOrderStatus(int orderId, [FromBody] UpdateOrderStatusRequest request)
         {
             try
@@ -132,9 +133,55 @@ namespace GroupProj2_321.Controllers
         }
 
         /// <summary>
+        /// Updates order payment and delivery fee
+        /// </summary>
+        [HttpPut("{orderId:int}/payment")]
+        public async Task<IActionResult> UpdateOrderPayment(int orderId, [FromBody] UpdateOrderPaymentRequest request)
+        {
+            try
+            {
+                if (request == null)
+                {
+                    return BadRequest("Payment data is required.");
+                }
+
+                await _databaseService.UpdateOrderPaymentAndDeliveryAsync(
+                    orderId,
+                    "Paid",
+                    request.DeliveryFee ?? 0,
+                    request.CreditCardLast4
+                );
+
+                // Create payment record
+                if (request.Amount > 0)
+                {
+                    var payment = new Payment
+                    {
+                        OrderId = orderId,
+                        Amount = request.Amount,
+                        PaymentMethod = "Credit Card",
+                        TransactionId = $"card_{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}",
+                        PaymentDate = DateTime.UtcNow,
+                        Status = "Successful"
+                    };
+
+                    await _databaseService.CreatePaymentAsync(payment);
+                }
+
+                _logger.LogInformation($"Order {orderId} payment updated successfully");
+                return Ok(new { message = "Payment information updated successfully. Waiting on farmer to complete order." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating payment for order {OrderId}", orderId);
+                return StatusCode(500, $"An error occurred while updating payment: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Cancels an order
         /// </summary>
-        [HttpPost("{orderId}/cancel")]
+        [HttpPost("{orderId:int}/cancel")]
         public async Task<IActionResult> CancelOrder(int orderId)
         {
             try
@@ -186,6 +233,13 @@ namespace GroupProj2_321.Controllers
     public class UpdateOrderStatusRequest
     {
         public string Status { get; set; } = string.Empty;
+    }
+
+    public class UpdateOrderPaymentRequest
+    {
+        public decimal Amount { get; set; }
+        public decimal? DeliveryFee { get; set; }
+        public string? CreditCardLast4 { get; set; }
     }
 }
 

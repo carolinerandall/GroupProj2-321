@@ -593,6 +593,9 @@
             const userId = localStorage.getItem('userId');
             const userName = localStorage.getItem('userName');
             
+            // Update cart badge on portal load
+            updateCartBadge();
+            
             const app = document.getElementById('app');
             app.innerHTML = `
                 <div class="container-fluid mt-4">
@@ -614,6 +617,9 @@
                                         </a>
                                         <a class="nav-link" href="#" onclick="showSchoolSection('produce')">
                                             <i class="bi bi-basket me-2"></i>Browse Produce
+                                        </a>
+                                        <a class="nav-link" href="#" onclick="showSchoolSection('cart')">
+                                            <i class="bi bi-cart me-2"></i>Shopping Cart <span id="cartBadge" class="badge bg-primary"></span>
                                         </a>
                                         <a class="nav-link" href="#" onclick="showSchoolSection('orders')">
                                             <i class="bi bi-cart-check me-2"></i>My Orders
@@ -642,13 +648,38 @@
                                 
                                 <div id="produceSection" class="school-section" style="display: none;">
                                     <div class="card">
-                                        <div class="card-header">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
                                             <h4><i class="bi bi-basket me-2"></i>Available Produce</h4>
+                                            <button class="btn btn-outline-primary btn-sm" onclick="showSchoolSection('cart'); updateCartDisplay();">
+                                                <i class="bi bi-cart me-1"></i>View Cart (<span id="cartCountHeader">0</span>)
+                                            </button>
                                         </div>
                                         <div class="card-body">
                                             <p>Browse available produce from local farmers...</p>
-                                            <button class="btn btn-primary" onclick="loadAvailableProduce()">Load Produce</button>
+                                            <button class="btn btn-primary" onclick="loadAvailableProduce()">
+                                                <i class="bi bi-arrow-clockwise me-2"></i>Refresh Produce List
+                                            </button>
                                             <div id="produceList" class="mt-3"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="cartSection" class="school-section" style="display: none;">
+                                    <div class="card">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h4><i class="bi bi-cart me-2"></i>Shopping Cart</h4>
+                                            <button class="btn btn-sm btn-secondary" onclick="clearCart(); showSchoolSection('produce')">
+                                                <i class="bi bi-arrow-left me-1"></i>Back to Browse
+                                            </button>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="cartContents"></div>
+                                            <div id="cartSummary" class="mt-3"></div>
+                                            <div class="mt-3 d-grid gap-2">
+                                                <button class="btn btn-success btn-lg" onclick="createOrderFromCart()" id="checkoutBtn" style="display: none;">
+                                                    <i class="bi bi-check-circle me-2"></i>Create Order
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -758,8 +789,28 @@
         function showSchoolSection(section) {
             document.querySelectorAll('.school-section').forEach(el => el.style.display = 'none');
             document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
-            document.getElementById(section + 'Section').style.display = 'block';
-            event.target.classList.add('active');
+            const sectionEl = document.getElementById(section + 'Section');
+            if (sectionEl) {
+                sectionEl.style.display = 'block';
+            }
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+            
+            // Update cart display if showing cart section
+            if (section === 'cart') {
+                updateCartDisplay();
+            }
+            
+            // Auto-load produce when showing produce section
+            if (section === 'produce') {
+                loadAvailableProduce();
+            }
+            
+            // Auto-load orders when showing orders section
+            if (section === 'orders') {
+                loadSchoolOrders();
+            }
         }
         
         function showFarmerSection(section) {
@@ -797,6 +848,243 @@
             produceSection.style.display = 'block';
         }
         
+        // Shopping cart management
+        function getCart() {
+            const cart = localStorage.getItem('shoppingCart');
+            return cart ? JSON.parse(cart) : [];
+        }
+        
+        function saveCart(cart) {
+            localStorage.setItem('shoppingCart', JSON.stringify(cart));
+            updateCartBadge();
+        }
+        
+        function addToCart(produceId, farmerId, produceName, pricePerUnit, unit, availableQuantity, description) {
+            const cart = getCart();
+            
+            // Check if this produce is already in cart
+            const existingItem = cart.find(item => item.produceId === produceId);
+            if (existingItem) {
+                alert('This produce is already in your cart!');
+                return;
+            }
+            
+            cart.push({
+                produceId: produceId,
+                produceName: produceName,
+                farmerId: farmerId,
+                pricePerUnit: parseFloat(pricePerUnit),
+                unit: unit,
+                availableQuantity: parseInt(availableQuantity),
+                quantity: 1, // Default quantity
+                description: description || ''
+            });
+            
+            saveCart(cart);
+            alert(`${produceName} added to cart!`);
+        }
+        
+        function removeFromCart(produceId) {
+            const cart = getCart();
+            const updatedCart = cart.filter(item => item.produceId !== produceId);
+            saveCart(updatedCart);
+            updateCartDisplay();
+        }
+        
+        function updateCartQuantity(produceId, newQuantity) {
+            const cart = getCart();
+            const item = cart.find(item => item.produceId === produceId);
+            if (item) {
+                if (newQuantity <= 0) {
+                    removeFromCart(produceId);
+                } else if (newQuantity > item.availableQuantity) {
+                    alert(`Cannot order more than ${item.availableQuantity} ${item.unit} available.`);
+                    return;
+                } else {
+                    item.quantity = newQuantity;
+                    saveCart(cart);
+                    updateCartDisplay();
+                }
+            }
+        }
+        
+        function clearCart() {
+            if (confirm('Are you sure you want to clear your cart?')) {
+                localStorage.removeItem('shoppingCart');
+                updateCartBadge();
+                updateCartDisplay();
+            }
+        }
+        
+        function updateCartBadge() {
+            const cart = getCart();
+            const badge = document.getElementById('cartBadge');
+            const headerCount = document.getElementById('cartCountHeader');
+            const count = cart.length;
+            if (badge) {
+                badge.textContent = count > 0 ? count : '';
+                badge.style.display = count > 0 ? 'inline' : 'none';
+            }
+            if (headerCount) {
+                headerCount.textContent = count;
+            }
+        }
+        
+        function updateCartDisplay() {
+            const cart = getCart();
+            const cartContents = document.getElementById('cartContents');
+            const cartSummary = document.getElementById('cartSummary');
+            const checkoutBtn = document.getElementById('checkoutBtn');
+            
+            if (cart.length === 0) {
+                cartContents.innerHTML = '<p class="text-muted">Your cart is empty. <a href="#" onclick="showSchoolSection(\'produce\')">Browse produce</a> to add items.</p>';
+                cartSummary.innerHTML = '';
+                checkoutBtn.style.display = 'none';
+                return;
+            }
+            
+            // Group by farmer
+            const byFarmer = {};
+            cart.forEach(item => {
+                if (!byFarmer[item.farmerId]) {
+                    byFarmer[item.farmerId] = [];
+                }
+                byFarmer[item.farmerId].push(item);
+            });
+            
+            let html = '';
+            let totalCost = 0;
+            
+            Object.keys(byFarmer).forEach(farmerId => {
+                const farmerItems = byFarmer[farmerId];
+                html += `
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">Farmer Items</h6>
+                        </div>
+                        <div class="card-body">
+                            ${farmerItems.map(item => {
+                                const subtotal = item.quantity * item.pricePerUnit;
+                                totalCost += subtotal;
+                                return `
+                                    <div class="d-flex justify-content-between align-items-start mb-3 pb-3 border-bottom">
+                                        <div class="flex-grow-1">
+                                            <h6>${item.produceName}</h6>
+                                            <p class="text-muted small mb-1">${item.description || 'No description'}</p>
+                                            <p class="mb-1"><strong>$${item.pricePerUnit.toFixed(2)}</strong> per ${item.unit}</p>
+                                            <div class="input-group" style="width: 150px;">
+                                                <label class="input-group-text">Quantity:</label>
+                                                <input type="number" class="form-control" 
+                                                    min="1" max="${item.availableQuantity}" 
+                                                    value="${item.quantity}"
+                                                    onchange="updateCartQuantity(${item.produceId}, parseInt(this.value))">
+                                            </div>
+                                            <small class="text-muted">Max: ${item.availableQuantity} ${item.unit}</small>
+                                        </div>
+                                        <div class="text-end ms-3">
+                                            <p class="mb-2"><strong>$${subtotal.toFixed(2)}</strong></p>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${item.produceId})">
+                                                <i class="bi bi-trash"></i> Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            cartContents.innerHTML = html;
+            
+            cartSummary.innerHTML = `
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Total: <span class="text-success">$${totalCost.toFixed(2)}</span></h5>
+                            <button class="btn btn-secondary" onclick="clearCart()">Clear Cart</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            checkoutBtn.style.display = cart.length > 0 ? 'block' : 'none';
+        }
+        
+        async function createOrderFromCart() {
+            const cart = getCart();
+            if (cart.length === 0) {
+                alert('Your cart is empty!');
+                return;
+            }
+            
+            const schoolId = parseInt(localStorage.getItem('userId'));
+            if (!schoolId) {
+                alert('Error: School ID not found. Please log in again.');
+                return;
+            }
+            
+            // Group items by farmer (orders are per farmer)
+            const byFarmer = {};
+            cart.forEach(item => {
+                if (!byFarmer[item.farmerId]) {
+                    byFarmer[item.farmerId] = [];
+                }
+                byFarmer[item.farmerId].push(item);
+            });
+            
+            // Create an order for each farmer
+            const orderPromises = [];
+            
+            for (const farmerId of Object.keys(byFarmer)) {
+                const items = byFarmer[farmerId];
+                const today = new Date();
+                const deliveryDate = new Date(today);
+                deliveryDate.setDate(today.getDate() + 7); // Default 7 days for delivery
+                
+                const orderItems = items.map(item => ({
+                    produceId: item.produceId,
+                    quantity: item.quantity,
+                    unitPrice: item.pricePerUnit
+                }));
+                
+                const orderData = {
+                    schoolId: schoolId,
+                    farmerId: parseInt(farmerId),
+                    orderDate: today.toISOString(),
+                    deliveryDate: deliveryDate.toISOString(),
+                    orderItems: orderItems
+                };
+                
+                orderPromises.push(
+                    fetch(`${API_BASE}/orders`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(orderData)
+                    })
+                );
+            }
+            
+            try {
+                const responses = await Promise.all(orderPromises);
+                const allOk = responses.every(r => r.ok);
+                
+                if (allOk) {
+                    alert('Order(s) created successfully!');
+                    clearCart();
+                    showSchoolSection('orders');
+                    loadSchoolOrders();
+                } else {
+                    const errors = await Promise.all(responses.map(r => r.text()));
+                    alert('Error creating order(s): ' + errors.join(', '));
+                }
+            } catch (error) {
+                alert('Error creating order: ' + error.message);
+            }
+        }
+        
         async function loadAvailableProduce() {
             try {
                 const response = await fetch(`${API_BASE}/school/produce/available`);
@@ -807,12 +1095,21 @@
                         listDiv.innerHTML = '<p class="text-muted">No produce available at this time.</p>';
                     } else {
                         listDiv.innerHTML = produce.map(p => `
-                            <div class="card mb-2">
+                            <div class="card mb-3">
                                 <div class="card-body">
-                                    <h5>${p.produceName}</h5>
-                                    <p>${p.description || 'No description'}</p>
-                                    <p><strong>Price:</strong> $${p.pricePerUnit} per ${p.unit}</p>
-                                    <p><strong>Available:</strong> ${p.availableQuantity} ${p.unit}</p>
+                                    <div class="row">
+                                        <div class="col-md-8">
+                                            <h5>${p.produceName}</h5>
+                                            <p class="text-muted">${p.description || 'No description'}</p>
+                                            <p><strong>Price:</strong> $${p.pricePerUnit.toFixed(2)} per ${p.unit}</p>
+                                            <p><strong>Available:</strong> ${p.availableQuantity} ${p.unit}</p>
+                                        </div>
+                                        <div class="col-md-4 text-end">
+                                            <button class="btn btn-success" onclick="addToCart(${p.produceId}, ${p.farmerId}, '${p.produceName.replace(/'/g, "\\'")}', ${p.pricePerUnit}, '${p.unit}', ${p.availableQuantity}, '${(p.description || '').replace(/'/g, "\\'")}')">
+                                                <i class="bi bi-cart-plus me-2"></i>Add to Cart
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         `).join('');
@@ -860,20 +1157,196 @@
                     if (orders.length === 0) {
                         listDiv.innerHTML = '<p class="text-muted">No orders yet.</p>';
                     } else {
-                        listDiv.innerHTML = orders.map(o => `
-                            <div class="card mb-2">
-                                <div class="card-body">
-                                    <h5>Order #${o.orderId}</h5>
-                                    <p><strong>Status:</strong> ${o.status}</p>
-                                    <p><strong>Total:</strong> $${o.totalCost}</p>
-                                    <p><strong>Order Date:</strong> ${new Date(o.orderDate).toLocaleDateString()}</p>
+                        listDiv.innerHTML = orders.map(o => {
+                            const orderDate = new Date(o.orderDate).toLocaleDateString();
+                            const deliveryDate = new Date(o.deliveryDate).toLocaleDateString();
+                            const totalWithDelivery = parseFloat(o.totalCost) + parseFloat(o.deliveryFee || 0);
+                            const needsPayment = o.paymentStatus === 'Unpaid' || o.paymentStatus === 'Partial';
+                            
+                            return `
+                                <div class="card mb-3">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0">Order #${o.orderId}</h5>
+                                        <div>
+                                            ${o.farmerEmail ? `<a href="mailto:${o.farmerEmail}" class="btn btn-sm btn-outline-primary me-2" title="Email ${o.farmerName || 'Farmer'}">
+                                                <i class="bi bi-envelope"></i>
+                                            </a>` : ''}
+                                            <span class="badge ${getStatusBadgeClass(o.status)}">${o.status}</span>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <p><strong>Farmer:</strong> ${o.farmerName || 'Unknown'}</p>
+                                                <p><strong>Order Date:</strong> ${orderDate}</p>
+                                                <p><strong>Delivery Date:</strong> ${deliveryDate}</p>
+                                                <p><strong>Payment Status:</strong> 
+                                                    <span class="badge ${o.paymentStatus === 'Paid' ? 'bg-success' : 'bg-warning'}">${o.paymentStatus}</span>
+                                                </p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <p><strong>Subtotal:</strong> $${parseFloat(o.totalCost).toFixed(2)}</p>
+                                                ${o.deliveryFee > 0 ? `<p><strong>Delivery Fee:</strong> $${parseFloat(o.deliveryFee).toFixed(2)}</p>` : ''}
+                                                <p><strong>Total:</strong> $<span class="text-success fw-bold">${totalWithDelivery.toFixed(2)}</span></p>
+                                            </div>
+                                        </div>
+                                        ${needsPayment ? `
+                                            <div class="mt-3 pt-3 border-top">
+                                                <button class="btn btn-success" onclick="showPaymentModal(${o.orderId}, ${o.totalCost}, ${o.deliveryFee || 0})">
+                                                    <i class="bi bi-credit-card me-2"></i>Enter Payment Information
+                                                </button>
+                                            </div>
+                                        ` : o.status.includes('Waiting on Farmer') ? `
+                                            <div class="alert alert-info mt-3">
+                                                <i class="bi bi-info-circle me-2"></i>
+                                                Payment complete! Waiting on farmer to complete the order and arrange delivery.
+                                            </div>
+                                        ` : ''}
+                                    </div>
                                 </div>
-                            </div>
-                        `).join('');
+                            `;
+                        }).join('');
                     }
                 }
             } catch (error) {
                 alert('Error loading orders: ' + error.message);
+            }
+        }
+        
+        function getStatusBadgeClass(status) {
+            if (status.includes('Complete') || status === 'Delivered') return 'bg-success';
+            if (status.includes('Waiting')) return 'bg-info';
+            if (status === 'Pending') return 'bg-warning';
+            if (status === 'Cancelled') return 'bg-danger';
+            return 'bg-secondary';
+        }
+        
+        function showPaymentModal(orderId, subtotal, currentDeliveryFee) {
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Enter Payment Information</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="paymentForm">
+                                <div class="mb-3">
+                                    <label for="cardNumber" class="form-label">Card Number <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="cardNumber" 
+                                        placeholder="1234 5678 9012 3456" maxlength="19" required
+                                        oninput="formatCardNumber(this)">
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="expiryDate" class="form-label">Expiry Date <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="expiryDate" 
+                                            placeholder="MM/YY" maxlength="5" required
+                                            oninput="formatExpiryDate(this)">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="cvv" class="form-label">CVV <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="cvv" 
+                                            placeholder="123" maxlength="4" required>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="deliveryFee" class="form-label">Delivery Fee (if applicable)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" class="form-control" id="deliveryFee" 
+                                            value="${currentDeliveryFee}" min="0" step="0.01">
+                                    </div>
+                                    <small class="form-text text-muted">Enter delivery fee if farmer needs shipping help. Leave as 0 if farmer will deliver.</small>
+                                </div>
+                                <div class="alert alert-light">
+                                    <strong>Subtotal:</strong> $${subtotal.toFixed(2)}<br>
+                                    <strong>Delivery Fee:</strong> $<span id="feeDisplay">${currentDeliveryFee.toFixed(2)}</span><br>
+                                    <strong>Total:</strong> $<span id="totalDisplay">${(subtotal + currentDeliveryFee).toFixed(2)}</span>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-success" onclick="submitPayment(${orderId}, ${subtotal})">
+                                <i class="bi bi-check-circle me-2"></i>Submit Payment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+            
+            // Update total when delivery fee changes
+            const feeInput = modal.querySelector('#deliveryFee');
+            const feeDisplay = modal.querySelector('#feeDisplay');
+            const totalDisplay = modal.querySelector('#totalDisplay');
+            feeInput.addEventListener('input', () => {
+                const fee = parseFloat(feeInput.value) || 0;
+                feeDisplay.textContent = fee.toFixed(2);
+                totalDisplay.textContent = (subtotal + fee).toFixed(2);
+            });
+            
+            // Clean up when modal is hidden
+            modal.addEventListener('hidden.bs.modal', () => {
+                document.body.removeChild(modal);
+            });
+        }
+        
+        function formatCardNumber(input) {
+            let value = input.value.replace(/\s/g, '');
+            let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+            input.value = formattedValue;
+        }
+        
+        function formatExpiryDate(input) {
+            let value = input.value.replace(/\D/g, '');
+            if (value.length >= 2) {
+                value = value.substring(0, 2) + '/' + value.substring(2, 4);
+            }
+            input.value = value;
+        }
+        
+        async function submitPayment(orderId, subtotal) {
+            const cardNumber = document.getElementById('cardNumber').value.replace(/\s/g, '');
+            const deliveryFee = parseFloat(document.getElementById('deliveryFee').value) || 0;
+            const last4 = cardNumber.slice(-4);
+            
+            if (cardNumber.length < 13) {
+                alert('Please enter a valid card number');
+                return;
+            }
+            
+            const total = subtotal + deliveryFee;
+            
+            try {
+                const response = await fetch(`${API_BASE}/orders/${orderId}/payment`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        amount: total,
+                        deliveryFee: deliveryFee,
+                        creditCardLast4: last4
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(result.message || 'Payment information saved successfully!');
+                    bootstrap.Modal.getInstance(document.querySelector('.modal')).hide();
+                    loadSchoolOrders();
+                } else {
+                    const error = await response.text();
+                    alert('Error: ' + error);
+                }
+            } catch (error) {
+                alert('Error processing payment: ' + error.message);
             }
         }
         
@@ -887,16 +1360,49 @@
                     if (orders.length === 0) {
                         listDiv.innerHTML = '<p class="text-muted">No orders yet.</p>';
                     } else {
-                        listDiv.innerHTML = orders.map(o => `
-                            <div class="card mb-2">
-                                <div class="card-body">
-                                    <h5>Order #${o.orderId}</h5>
-                                    <p><strong>Status:</strong> ${o.status}</p>
-                                    <p><strong>Total:</strong> $${o.totalCost}</p>
-                                    <p><strong>Order Date:</strong> ${new Date(o.orderDate).toLocaleDateString()}</p>
+                        listDiv.innerHTML = orders.map(o => {
+                            const orderDate = new Date(o.orderDate).toLocaleDateString();
+                            const deliveryDate = new Date(o.deliveryDate).toLocaleDateString();
+                            const totalWithDelivery = parseFloat(o.totalCost) + parseFloat(o.deliveryFee || 0);
+                            
+                            return `
+                                <div class="card mb-3">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0">Order #${o.orderId}</h5>
+                                        <div>
+                                            ${o.schoolEmail ? `<a href="mailto:${o.schoolEmail}" class="btn btn-sm btn-outline-primary me-2" title="Email ${o.schoolName || o.schoolContactName || 'School'}">
+                                                <i class="bi bi-envelope"></i>
+                                            </a>` : ''}
+                                            <span class="badge ${getStatusBadgeClass(o.status)}">${o.status}</span>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <p><strong>School:</strong> ${o.schoolName || 'Unknown'}</p>
+                                                ${o.schoolContactName ? `<p><strong>Contact:</strong> ${o.schoolContactName}</p>` : ''}
+                                                <p><strong>Order Date:</strong> ${orderDate}</p>
+                                                <p><strong>Delivery Date:</strong> ${deliveryDate}</p>
+                                                <p><strong>Payment Status:</strong> 
+                                                    <span class="badge ${o.paymentStatus === 'Paid' ? 'bg-success' : 'bg-warning'}">${o.paymentStatus}</span>
+                                                </p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <p><strong>Subtotal:</strong> $${parseFloat(o.totalCost).toFixed(2)}</p>
+                                                ${o.deliveryFee > 0 ? `<p><strong>Delivery Fee:</strong> $${parseFloat(o.deliveryFee).toFixed(2)}</p>` : ''}
+                                                <p><strong>Total:</strong> $<span class="text-success fw-bold">${totalWithDelivery.toFixed(2)}</span></p>
+                                            </div>
+                                        </div>
+                                        ${o.status.includes('Waiting on Farmer') ? `
+                                            <div class="alert alert-warning mt-3">
+                                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                                School has completed payment. Please complete the order and arrange delivery.
+                                            </div>
+                                        ` : ''}
+                                    </div>
                                 </div>
-                            </div>
-                        `).join('');
+                            `;
+                        }).join('');
                     }
                 }
             } catch (error) {

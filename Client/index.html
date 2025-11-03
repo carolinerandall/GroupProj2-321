@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FarmToTable</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
+    <style>
+        .navbar-custom {
+            background-color: #28a745 !important; /* Green background */
+        }
+        
+        .navbar-custom .navbar-brand,
+        .navbar-custom .nav-link {
+            color: #ffffff !important; /* White text */
+        }
+        
+        .navbar-custom .dropdown-menu {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+        }
+        
+        .navbar-custom .dropdown-item {
+            color: #000000;
+        }
+        
+        .navbar-custom .dropdown-item:hover {
+            background-color: #f8f9fa;
+            color: #000000;
+        }
+        
+        /* Hero Section Styles */
+        .hero-section {
+            width: 100%;
+            height: 320px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .hero-image-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        .hero-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+        
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.7), rgba(40, 167, 69, 0.3));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .hero-content {
+            text-align: center;
+            color: white;
+            max-width: 600px;
+            padding: 0 20px;
+        }
+        
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .hero-subtitle {
+            font-size: 1.25rem;
+            font-weight: 400;
+            margin-bottom: 0;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .hero-section {
+                height: 240px;
+            }
+            
+            .hero-title {
+                font-size: 2rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+        }
+        
+        /* Green theme buttons */
+        .btn-primary {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        
+        .btn-primary:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+        }
+        
+        .bg-primary {
+            background-color: #28a745 !important;
+        }
+        
+        .text-primary {
+            color: #28a745 !important;
+        }
+        
+        .card-header.bg-primary {
+            background-color: #28a745 !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-custom">
+        <div class="container-fluid">
+            <!-- Brand with farm icon -->
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <i class="bi bi-basket me-2"></i>
+                FarmToTable
+            </a>
+            
+            <!-- Dropdown menu in top right -->
+            <div class="dropdown">
+                <button class="btn btn-outline-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-person-circle"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                    <li><a class="dropdown-item" href="#" onclick="showSignUp()">Sign Up</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="showLogIn()">Log In</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section with Farm Image -->
+    <div class="hero-section">
+        <div class="hero-image-container">
+            <img src="https://images.unsplash.com/photo-1464226184884-fa280b87c399?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80" 
+                 alt="Farm produce" 
+                 class="hero-image">
+            <div class="hero-overlay">
+                <div class="hero-content">
+                    <h1 class="hero-title">FarmToTable</h1>
+                    <p class="hero-subtitle">Connect local farmers with schools for fresh, local produce</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div id="app" class="container-fluid">
+        <!-- Content will be dynamically loaded here -->
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        
+        // Navigation functions
+        function showSignUp() {
+            loadSignUpPage();
+        }
+        
+        function showLogIn() {
+            loadLoginPage();
+        }
+        
+        // Load homepage on initial load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadHomePage();
+        });
+        
+        function loadSignUpPage() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="container mt-5">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-10">
+                            <h2 class="text-center mb-5">Join FarmToTable</h2>
+                            
+                            <!-- School Sign Up Box -->
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0"><i class="bi bi-building me-2"></i>School Sign Up</h4>
+                                </div>
+                                <div class="card-body">
+                                    <form id="schoolSignUpForm">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="schoolEmail" class="form-label">Email *</label>
+                                                <input type="email" class="form-control" id="schoolEmail" required>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="schoolPassword" class="form-label">Password *</label>
+                                                <input type="password" class="form-control" id="schoolPassword" required>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="schoolName" class="form-label">School Name *</label>
+                                                <input type="text" class="form-control" id="schoolName" required>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="contactName" class="form-label">Contact Name *</label>
+                                                <input type="text" class="form-control" id="contactName" required>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="schoolPhone" class="form-label">Phone</label>
+                                                <input type="tel" class="form-control" id="schoolPhone">
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="schoolAddress" class="form-label">Address</label>
+                                                <input type="text" class="form-control" id="schoolAddress">
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4 mb-3">
+                                                <label for="schoolCity" class="form-label">City</label>
+                                                <input type="text" class="form-control" id="schoolCity">
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label for="schoolState" class="form-label">State</label>
+                                                <input type="text" class="form-control" id="schoolState">
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label for="schoolZipCode" class="form-label">Zip Code</label>
+                                                <input type="text" class="form-control" id="schoolZipCode">
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">Sign Up as School</button>
+                                    </form>
+                                </div>
+                            </div>
+                            
+                            <!-- Farmer Sign Up Box -->
+                            <div class="card">
+                                <div class="card-header bg-success text-white">
+                                    <h4 class="mb-0"><i class="bi bi-flower1 me-2"></i>Farmer Sign Up</h4>
+                                </div>
+                                <div class="card-body">
+                                    <form id="farmerSignUpForm">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="farmerEmail" class="form-label">Email *</label>
+                                                <input type="email" class="form-control" id="farmerEmail" required>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="farmerPassword" class="form-label">Password *</label>
+                                                <input type="password" class="form-control" id="farmerPassword" required>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="farmName" class="form-label">Farm Name *</label>
+                                                <input type="text" class="form-control" id="farmName" required>
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="farmerFirstName" class="form-label">First Name *</label>
+                                                <input type="text" class="form-control" id="farmerFirstName" required>
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="farmerLastName" class="form-label">Last Name *</label>
+                                                <input type="text" class="form-control" id="farmerLastName" required>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="farmerPhone" class="form-label">Phone</label>
+                                                <input type="tel" class="form-control" id="farmerPhone">
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="farmerAddress" class="form-label">Address</label>
+                                                <input type="text" class="form-control" id="farmerAddress">
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4 mb-3">
+                                                <label for="farmerCity" class="form-label">City</label>
+                                                <input type="text" class="form-control" id="farmerCity">
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label for="farmerState" class="form-label">State</label>
+                                                <input type="text" class="form-control" id="farmerState">
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label for="farmerZipCode" class="form-label">Zip Code</label>
+                                                <input type="text" class="form-control" id="farmerZipCode">
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn btn-success">Sign Up as Farmer</button>
+                                    </form>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center mt-4">
+                                <button class="btn btn-outline-secondary" onclick="loadHomePage()">Back to Home</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add event listeners for form submissions
+            document.getElementById('schoolSignUpForm').addEventListener('submit', handleSchoolSignUp);
+            document.getElementById('farmerSignUpForm').addEventListener('submit', handleFarmerSignUp);
+        }
+        
+        function loadLoginPage() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="container mt-5">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8">
+                            <h2 class="text-center mb-5">Welcome Back</h2>
+                            
+                            <!-- School Login Box -->
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h4 class="mb-0"><i class="bi bi-building me-2"></i>School Login</h4>
+                                </div>
+                                <div class="card-body">
+                                    <form id="schoolLoginForm">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="schoolLoginEmail" class="form-label">Email *</label>
+                                                <input type="email" class="form-control" id="schoolLoginEmail" required>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="schoolLoginPassword" class="form-label">Password *</label>
+                                                <input type="password" class="form-control" id="schoolLoginPassword" required>
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">Login as School</button>
+                                    </form>
+                                </div>
+                            </div>
+                            
+                            <!-- Farmer Login Box -->
+                            <div class="card">
+                                <div class="card-header bg-success text-white">
+                                    <h4 class="mb-0"><i class="bi bi-flower1 me-2"></i>Farmer Login</h4>
+                                </div>
+                                <div class="card-body">
+                                    <form id="farmerLoginForm">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="farmerLoginEmail" class="form-label">Email *</label>
+                                                <input type="email" class="form-control" id="farmerLoginEmail" required>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="farmerLoginPassword" class="form-label">Password *</label>
+                                                <input type="password" class="form-control" id="farmerLoginPassword" required>
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn btn-success">Login as Farmer</button>
+                                    </form>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center mt-4">
+                                <button class="btn btn-outline-secondary" onclick="loadHomePage()">Back to Home</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add event listeners for form submissions
+            document.getElementById('schoolLoginForm').addEventListener('submit', handleSchoolLogin);
+            document.getElementById('farmerLoginForm').addEventListener('submit', handleFarmerLogin);
+        }
+        
+        function loadHomePage() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <!-- Mission Statement Section -->
+                <div class="container-fluid py-5" style="background: linear-gradient(135deg, #28a745, #1e7e34);">
+                    <div class="container">
+                        <div class="row align-items-center">
+                            <div class="col-lg-8">
+                                <h1 class="text-white display-4 fw-bold mb-4">Fresh Produce, Local Farms</h1>
+                                <p class="text-white lead mb-4">FarmToTable connects local farmers with elementary schools, making it easy to bring fresh, local produce directly to your cafeteria while supporting our farming community.</p>
+                            </div>
+                            <div class="col-lg-4 text-center">
+                                <img src="https://images.unsplash.com/photo-1592924357228-91a4daadcfea?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" 
+                                     alt="Fresh produce" class="img-fluid rounded shadow-lg">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics Section -->
+                <div class="container py-5">
+                    <div class="row text-center">
+                        <div class="col-md-4 mb-4">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <i class="bi bi-building text-primary fs-1 mb-3"></i>
+                                    <h3 class="mb-2">Schools</h3>
+                                    <p class="text-muted">Connect with local farmers</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-4">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <i class="bi bi-flower1 text-success fs-1 mb-3"></i>
+                                    <h3 class="mb-2">Farmers</h3>
+                                    <p class="text-muted">Share your fresh produce</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-4">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <i class="bi bi-basket text-primary fs-1 mb-3"></i>
+                                    <h3 class="mb-2">Fresh Produce</h3>
+                                    <p class="text-muted">Local and sustainable</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Form submission handlers
+        async function handleSchoolSignUp(event) {
+            event.preventDefault();
+            
+            const schoolData = {
+                email: document.getElementById('schoolEmail').value,
+                password: document.getElementById('schoolPassword').value,
+                schoolName: document.getElementById('schoolName').value,
+                contactName: document.getElementById('contactName').value,
+                phone: document.getElementById('schoolPhone').value || null,
+                address: document.getElementById('schoolAddress').value || null,
+                city: document.getElementById('schoolCity').value || null,
+                state: document.getElementById('schoolState').value || null,
+                zipCode: document.getElementById('schoolZipCode').value || null
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/users/school`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(schoolData)
+                });
+                
+                if (response.ok) {
+                    alert('School account created successfully!');
+                    loadHomePage();
+                } else {
+                    const error = await response.text();
+                    alert('Error: ' + error);
+                }
+            } catch (error) {
+                alert('Error creating school account: ' + error.message);
+            }
+        }
+        
+        async function handleFarmerSignUp(event) {
+            event.preventDefault();
+            
+            const farmerData = {
+                email: document.getElementById('farmerEmail').value,
+                password: document.getElementById('farmerPassword').value,
+                farmName: document.getElementById('farmName').value,
+                firstName: document.getElementById('farmerFirstName').value,
+                lastName: document.getElementById('farmerLastName').value,
+                phone: document.getElementById('farmerPhone').value || null,
+                address: document.getElementById('farmerAddress').value || null,
+                city: document.getElementById('farmerCity').value || null,
+                state: document.getElementById('farmerState').value || null,
+                zipCode: document.getElementById('farmerZipCode').value || null
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/users/farmer`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(farmerData)
+                });
+                
+                if (response.ok) {
+                    alert('Farmer account created successfully!');
+                    loadHomePage();
+                } else {
+                    const error = await response.text();
+                    alert('Error: ' + error);
+                }
+            } catch (error) {
+                alert('Error creating farmer account: ' + error.message);
+            }
+        }
+        
+        // Login form submission handlers
+        async function handleSchoolLogin(event) {
+            event.preventDefault();
+            
+            const loginData = {
+                email: document.getElementById('schoolLoginEmail').value,
+                password: document.getElementById('schoolLoginPassword').value
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/school`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(loginData)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    alert('School login successful! Welcome, ' + result.fullName);
+                    localStorage.setItem('userType', 'school');
+                    localStorage.setItem('userId', result.userId);
+                    localStorage.setItem('userName', result.fullName);
+                    loadSchoolPortal();
+                } else {
+                    const error = await response.text();
+                    alert('Error: ' + error);
+                }
+            } catch (error) {
+                alert('Error during login: ' + error.message);
+            }
+        }
+        
+        async function handleFarmerLogin(event) {
+            event.preventDefault();
+            
+            const loginData = {
+                email: document.getElementById('farmerLoginEmail').value,
+                password: document.getElementById('farmerLoginPassword').value
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/farmer`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(loginData)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    alert('Farmer login successful! Welcome, ' + result.fullName);
+                    localStorage.setItem('userType', 'farmer');
+                    localStorage.setItem('userId', result.userId);
+                    localStorage.setItem('userName', result.fullName);
+                    loadFarmerPortal();
+                } else {
+                    const error = await response.text();
+                    alert('Error: ' + error);
+                }
+            } catch (error) {
+                alert('Error during login: ' + error.message);
+            }
+        }
+        
+        function loadSchoolPortal() {
+            const userId = localStorage.getItem('userId');
+            const userName = localStorage.getItem('userName');
+            
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="container-fluid mt-4">
+                    <div class="row">
+                        <!-- Sidebar -->
+                        <div class="col-md-3">
+                            <div class="card">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0"><i class="bi bi-building me-2"></i>School Portal</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="text-center mb-3">
+                                        <i class="bi bi-building text-primary fs-1"></i>
+                                        <h6 class="mt-2">${userName}</h6>
+                                    </div>
+                                    <nav class="nav flex-column">
+                                        <a class="nav-link active" href="#" onclick="showSchoolSection('profile')">
+                                            <i class="bi bi-person me-2"></i>My Profile
+                                        </a>
+                                        <a class="nav-link" href="#" onclick="showSchoolSection('produce')">
+                                            <i class="bi bi-basket me-2"></i>Browse Produce
+                                        </a>
+                                        <a class="nav-link" href="#" onclick="showSchoolSection('orders')">
+                                            <i class="bi bi-cart-check me-2"></i>My Orders
+                                        </a>
+                                        <a class="nav-link" href="#" onclick="logout()">
+                                            <i class="bi bi-box-arrow-right me-2"></i>Logout
+                                        </a>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Main Content -->
+                        <div class="col-md-9">
+                            <div id="schoolContent">
+                                <div id="profileSection" class="school-section">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h4><i class="bi bi-person-gear me-2"></i>School Profile</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <p>Profile management coming soon...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="produceSection" class="school-section" style="display: none;">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h4><i class="bi bi-basket me-2"></i>Available Produce</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <p>Browse available produce from local farmers...</p>
+                                            <button class="btn btn-primary" onclick="loadAvailableProduce()">Load Produce</button>
+                                            <div id="produceList" class="mt-3"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="ordersSection" class="school-section" style="display: none;">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h4><i class="bi bi-cart-check me-2"></i>My Orders</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <p>View and manage your orders...</p>
+                                            <button class="btn btn-primary" onclick="loadSchoolOrders()">Load Orders</button>
+                                            <div id="ordersList" class="mt-3"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function loadFarmerPortal() {
+            const userId = localStorage.getItem('userId');
+            const userName = localStorage.getItem('userName');
+            
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="container-fluid mt-4">
+                    <div class="row">
+                        <!-- Sidebar -->
+                        <div class="col-md-3">
+                            <div class="card">
+                                <div class="card-header bg-success text-white">
+                                    <h5 class="mb-0"><i class="bi bi-flower1 me-2"></i>Farmer Portal</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="text-center mb-3">
+                                        <i class="bi bi-flower1 text-success fs-1"></i>
+                                        <h6 class="mt-2">${userName}</h6>
+                                    </div>
+                                    <nav class="nav flex-column">
+                                        <a class="nav-link active" href="#" onclick="showFarmerSection('profile')">
+                                            <i class="bi bi-person me-2"></i>My Profile
+                                        </a>
+                                        <a class="nav-link" href="#" onclick="showFarmerSection('produce')">
+                                            <i class="bi bi-basket me-2"></i>My Produce
+                                        </a>
+                                        <a class="nav-link" href="#" onclick="showFarmerSection('orders')">
+                                            <i class="bi bi-cart-check me-2"></i>Orders
+                                        </a>
+                                        <a class="nav-link" href="#" onclick="logout()">
+                                            <i class="bi bi-box-arrow-right me-2"></i>Logout
+                                        </a>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Main Content -->
+                        <div class="col-md-9">
+                            <div id="farmerContent">
+                                <div id="profileSection" class="farmer-section">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h4><i class="bi bi-person-gear me-2"></i>Farmer Profile</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <p>Profile management coming soon...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="produceSection" class="farmer-section" style="display: none;">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h4><i class="bi bi-basket me-2"></i>My Produce</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <button class="btn btn-success mb-3" onclick="showAddProduceForm()">Add New Produce</button>
+                                            <button class="btn btn-primary mb-3" onclick="loadFarmerProduce()">Load My Produce</button>
+                                            <div id="produceList" class="mt-3"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="ordersSection" class="farmer-section" style="display: none;">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h4><i class="bi bi-cart-check me-2"></i>Orders</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <p>View orders from schools...</p>
+                                            <button class="btn btn-primary" onclick="loadFarmerOrders()">Load Orders</button>
+                                            <div id="ordersList" class="mt-3"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function showSchoolSection(section) {
+            document.querySelectorAll('.school-section').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            document.getElementById(section + 'Section').style.display = 'block';
+            event.target.classList.add('active');
+        }
+        
+        function showFarmerSection(section) {
+            document.querySelectorAll('.farmer-section').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            document.getElementById(section + 'Section').style.display = 'block';
+            event.target.classList.add('active');
+        }
+        
+        async function loadAvailableProduce() {
+            try {
+                const response = await fetch(`${API_BASE}/school/produce/available`);
+                if (response.ok) {
+                    const produce = await response.json();
+                    const listDiv = document.getElementById('produceList');
+                    if (produce.length === 0) {
+                        listDiv.innerHTML = '<p class="text-muted">No produce available at this time.</p>';
+                    } else {
+                        listDiv.innerHTML = produce.map(p => `
+                            <div class="card mb-2">
+                                <div class="card-body">
+                                    <h5>${p.produceName}</h5>
+                                    <p>${p.description || 'No description'}</p>
+                                    <p><strong>Price:</strong> $${p.pricePerUnit} per ${p.unit}</p>
+                                    <p><strong>Available:</strong> ${p.availableQuantity} ${p.unit}</p>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                alert('Error loading produce: ' + error.message);
+            }
+        }
+        
+        async function loadFarmerProduce() {
+            const userId = localStorage.getItem('userId');
+            try {
+                const response = await fetch(`${API_BASE}/farmer/${userId}/produce`);
+                if (response.ok) {
+                    const produce = await response.json();
+                    const listDiv = document.getElementById('produceList');
+                    if (produce.length === 0) {
+                        listDiv.innerHTML = '<p class="text-muted">You haven\'t added any produce yet.</p>';
+                    } else {
+                        listDiv.innerHTML = produce.map(p => `
+                            <div class="card mb-2">
+                                <div class="card-body">
+                                    <h5>${p.produceName}</h5>
+                                    <p>${p.description || 'No description'}</p>
+                                    <p><strong>Price:</strong> $${p.pricePerUnit} per ${p.unit}</p>
+                                    <p><strong>Available:</strong> ${p.availableQuantity} ${p.unit}</p>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                alert('Error loading produce: ' + error.message);
+            }
+        }
+        
+        async function loadSchoolOrders() {
+            const userId = localStorage.getItem('userId');
+            try {
+                const response = await fetch(`${API_BASE}/orders/school/${userId}`);
+                if (response.ok) {
+                    const orders = await response.json();
+                    const listDiv = document.getElementById('ordersList');
+                    if (orders.length === 0) {
+                        listDiv.innerHTML = '<p class="text-muted">No orders yet.</p>';
+                    } else {
+                        listDiv.innerHTML = orders.map(o => `
+                            <div class="card mb-2">
+                                <div class="card-body">
+                                    <h5>Order #${o.orderId}</h5>
+                                    <p><strong>Status:</strong> ${o.status}</p>
+                                    <p><strong>Total:</strong> $${o.totalCost}</p>
+                                    <p><strong>Order Date:</strong> ${new Date(o.orderDate).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                alert('Error loading orders: ' + error.message);
+            }
+        }
+        
+        async function loadFarmerOrders() {
+            const userId = localStorage.getItem('userId');
+            try {
+                const response = await fetch(`${API_BASE}/orders/farmer/${userId}`);
+                if (response.ok) {
+                    const orders = await response.json();
+                    const listDiv = document.getElementById('ordersList');
+                    if (orders.length === 0) {
+                        listDiv.innerHTML = '<p class="text-muted">No orders yet.</p>';
+                    } else {
+                        listDiv.innerHTML = orders.map(o => `
+                            <div class="card mb-2">
+                                <div class="card-body">
+                                    <h5>Order #${o.orderId}</h5>
+                                    <p><strong>Status:</strong> ${o.status}</p>
+                                    <p><strong>Total:</strong> $${o.totalCost}</p>
+                                    <p><strong>Order Date:</strong> ${new Date(o.orderDate).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                alert('Error loading orders: ' + error.message);
+            }
+        }
+        
+        function logout() {
+            localStorage.clear();
+            loadHomePage();
+        }
+        
+        function showAddProduceForm() {
+            // Placeholder for add produce form
+            alert('Add produce form coming soon!');
+        }
+    </script>
+</body>
+</html>
+
